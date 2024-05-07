@@ -10,9 +10,7 @@ import (
 
 const (
 	ServerMessagePrefix = ""
-	HelpMessage         = `
-list of available commands:
-
+	HelpMessage         = `list of available commands:
 	:help                   display this help message
 	:info                   display client's name and joined rooms
 	:name <name>            set client's name
@@ -69,16 +67,15 @@ func (c *Client) loop(s *Server) {
 		case strings.HasPrefix(str, ":join "):
 			room := str[6:]
 			if len(room) >= 1 {
-				c.writeText(fmt.Sprintf("you have joined room %q", room))
+				c.writeText(fmt.Sprintf("you have joined room %q\n", room))
 				c.rooms[room] = struct{}{}
 			}
 
 		case strings.HasPrefix(str, ":leave "):
-			room := str[6:]
+			room := str[7:]
 			if len(room) >= 1 {
-				// TODO fix this bug
 				delete(c.rooms, room)
-				c.writeText(fmt.Sprintf("you have left room %q", room))
+				c.writeText(fmt.Sprintf("you have left room %q\n", room))
 			}
 
 		case strings.HasPrefix(str, "to:"):
@@ -95,43 +92,29 @@ func (c *Client) loop(s *Server) {
 }
 
 func (c *Client) writeText(msg string) {
-	_, err := c.conn.Write([]byte(ServerMessagePrefix + msg + "\n"))
-	if err != nil {
-		// TODO figure out what to do here
-		log.Println(err)
-	}
+	fmt.Fprint(c.conn, ServerMessagePrefix+msg)
 }
 
 func (c *Client) writeMessage(message *Message) {
-	n, err := c.conn.Write([]byte(message.content))
-	if err != nil {
-		// TODO figure out what to do here
-		log.Println(err)
-	}
+	n, _ := fmt.Fprint(c.conn, message.content)
 	log.Printf("Wrote %d bytes\n", n)
 }
 
 func (c *Client) writeClientInfo() {
-	// TODO clean this stuff:
-	// use bufio writer instead of manual writing
-
-	c.conn.Write([]byte(("============ Client info ==============\n")))
-	c.conn.Write([]byte((fmt.Sprintf("Name: %q\n", c.name))))
-	c.conn.Write([]byte(("Rooms:\n")))
+	c.writeText("============ Client info ==============\n")
+	c.writeText("Name: " + c.name + "\n")
+	c.writeText("Rooms:\n")
 	for room := range c.rooms {
 		if len(room) == 0 {
 			continue
 		}
-		c.conn.Write([]byte((room + "\n")))
+		c.writeText(room + "\n")
 	}
-	c.conn.Write([]byte(("============ Client info ==============\n")))
+	c.writeText("============ Client info ==============\n")
 }
 
 func (c *Client) writeHelpMessage() {
-	// TODO clean this stuff:
-	// use bufio writer instead of manual writing
-
-	c.conn.Write([]byte(("============ Help message ==============\n")))
+	c.writeText("============ Help message ==============\n")
 	c.writeText(HelpMessage)
-	c.conn.Write([]byte(("============ Help message ==============\n")))
+	c.writeText("============ Help message ==============\n")
 }
